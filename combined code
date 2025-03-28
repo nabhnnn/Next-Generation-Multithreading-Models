@@ -1,0 +1,127 @@
+import threading
+import multiprocessing
+import asyncio
+import time
+import matplotlib.pyplot as plt
+import tkinter as tk
+from tkinter import ttk
+
+# CPU-BOUND TASK: Simulates a CPU-intensive operation (factorial calculation).
+def cpu_bound_task(n):
+    result = 1
+    for i in range(1, n+1):
+        result *= i
+    return result
+
+# I/O-BOUND TASK: Simulates an I/O-bound operation using sleep.
+def io_bound_task():
+    time.sleep(1)
+
+# THREADING TEST: Runs the task using multiple threads.
+def threading_test(n_threads, task, task_args):
+    threads = []
+    for _ in range(n_threads):
+        t = threading.Thread(target=task, args=(task_args,))
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+
+# MULTIPROCESSING TEST: Runs the task using multiple processes.
+def multiprocessing_test(n_processes, task, task_args):
+    processes = []
+    for _ in range(n_processes):
+        p = multiprocessing.Process(target=task, args=(task_args,))
+        processes.append(p)
+        p.start()
+    for p in processes:
+        p.join()
+
+# ASYNC TASK: Simulates an async I/O-bound operation.
+async def async_task():
+    await asyncio.sleep(1)
+
+# ASYNCIO TEST: Runs async tasks using asyncio.
+async def asyncio_test(n_tasks):
+    tasks = [async_task() for _ in range(n_tasks)]
+    await asyncio.gather(*tasks)
+
+# BENCHMARK FUNCTION: Runs performance benchmarks and returns execution times.
+def benchmark(n_tasks, task_size):
+    results = {}
+
+    # Threading Benchmark
+    start = time.time()
+    threading_test(n_tasks, cpu_bound_task, task_size)
+    results['Threading'] = time.time() - start
+
+    # Multiprocessing Benchmark
+    start = time.time()
+    multiprocessing_test(n_tasks, cpu_bound_task, task_size)
+    results['Multiprocessing'] = time.time() - start
+
+    # Asyncio Benchmark (for I/O-bound tasks)
+    start = time.time()
+    asyncio.run(asyncio_test(n_tasks))
+    results['Asyncio'] = time.time() - start
+
+    return results
+
+# VISUALIZATION FUNCTION: Displays benchmarking results as a bar chart.
+def visualize_results(results):
+    plt.figure(figsize=(6, 4))
+    plt.bar(results.keys(), results.values(), color=['blue', 'green', 'red'])
+    plt.xlabel('Multithreading Model')
+    plt.ylabel('Execution Time (seconds)')
+    plt.title('Performance Benchmarking')
+    plt.show()
+
+# GUI APPLICATION CLASS
+class BenchmarkApp:
+    """GUI Application to run multithreading performance benchmarks."""
+
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Multithreading Benchmark")
+        self.root.geometry("400x300")
+
+        self.frame = ttk.Frame(root, padding="20")
+        self.frame.grid()
+
+        # User Input Fields
+        ttk.Label(self.frame, text="Number of Tasks:").grid(column=0, row=0)
+        self.task_entry = ttk.Entry(self.frame)
+        self.task_entry.grid(column=1, row=0)
+        self.task_entry.insert(0, "10")
+
+        ttk.Label(self.frame, text="Task Size:").grid(column=0, row=1)
+        self.size_entry = ttk.Entry(self.frame)
+        self.size_entry.grid(column=1, row=1)
+        self.size_entry.insert(0, "50000")
+
+        # Run Benchmark Button
+        self.run_button = ttk.Button(self.frame, text="Run Benchmark", command=self.run_benchmark)
+        self.run_button.grid(column=0, row=2, columnspan=2)
+
+        # Results Display
+        self.result_text = tk.StringVar()
+        self.result_label = ttk.Label(self.frame, textvariable=self.result_text, wraplength=300)
+        self.result_label.grid(column=0, row=3, columnspan=2)
+
+    def run_benchmark(self):
+        """Runs the benchmarking test and updates the UI."""
+        try:
+            n_tasks = int(self.task_entry.get())  # Get user input (number of tasks)
+            task_size = int(self.size_entry.get())  # Get user input (task size)
+
+            results = benchmark(n_tasks, task_size)  # Run benchmarking tests
+            self.result_text.set(f"Results: {results}")  # Display results in GUI
+            visualize_results(results)  # Show visualization
+        except Exception as e:
+            self.result_text.set(f"Error: {str(e)}")  # Handle any errors
+
+# RUN THE GUI APPLICATION
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = BenchmarkApp(root)
+    root.mainloop()
